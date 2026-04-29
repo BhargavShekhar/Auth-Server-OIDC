@@ -7,4 +7,10 @@ export const signupPayloadModel = z.object({
     password: z.string().min(6)
 })
 
+export const signinPayloadModel = z.object({
+    email: z.email(),
+    password: z.string().min(6)
+})
+
 export type signupDto = z.infer<typeof signupPayloadModel>;
+export type signinDto = z.infer<typeof signinPayloadModel>;
