@@ -18,7 +18,7 @@ export function authenticationMiddleware() {
 
         try {
             const { id } = verifyUserToken(token)
-            req.user.id = id;
+            req.user = { id };
             next();
         } catch (error) {
             console.error(error);
@@ -29,7 +29,7 @@ export function authenticationMiddleware() {
 
 export function restrictToAuthenticatedUser() {
     return function (req: Request, res: Response, next: NextFunction) {
-        if (!req.user?.id) next(ApiError.unauthorized("Authentication required"));
+        if (!req.user?.id) return next(ApiError.unauthorized("Authentication required"));
         next();
     }
 }
