@@ -10,7 +10,7 @@ async function main() {
         const server = http.createServer(createExpressApplication());
 
         server.listen(PORT, () => {
-            console.log(`Server running at http://localhost:${PORT} on ${process.env.NODE_ENV}`);
+            console.log(`Server running at http://localhost:${PORT} on ${process.env.NDOE_ENV}`);
         })
     } catch (error) {
         console.log("Could not start server");
