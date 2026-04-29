@@ -48,6 +48,16 @@ class AuthenticationService {
 
         return { token };
     }
+
+    async getMe(id: string) {
+        const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id));
+
+        return {
+            firstName: user?.firstName,
+            lastName: user?.lastName,
+            email: user?.email
+        };
+    }
 }
 
 export default AuthenticationService;

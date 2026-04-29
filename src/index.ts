@@ -1,9 +1,12 @@
 import http from "node:http";
 
 import createExpressApplication from "./app/index.js";
-import "dotenv/config.js";
+import "dotenv/config";
 
 async function main() {
+    console.log("VERIFY SECRET:", process.env.JWT_SECRET);
+    console.log("VERIFY FILE:", import.meta.url);
+
     const PORT = process.env.PORT || 8080;
 
     const server = http.createServer(createExpressApplication());

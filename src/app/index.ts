@@ -2,22 +2,24 @@ import express from "express";
 import ApiError from "../common/api-error.js";
 import authRouter from "./auth/auth.routes.js";
 import type { Express, Request, Response, NextFunction } from "express";
+import { authenticationMiddleware } from "./middleware/auth-middleware.js";
 
 function createExpressApplication(): Express {
     const app = express();
 
     app.use(express.json());
+    app.use(authenticationMiddleware());
 
     app.get("/health", (req, res) => res.json({ healthy: true }));
 
     app.use("/api/v1/auth", authRouter);
 
     app.use((req, res, next) => {
-        next(ApiError.badRequest("no such route exists"));
+        next(ApiError.notfound("No such route exists"));
     })
 
     app.use((error: unknown, req: Request, res: Response, next: NextFunction) => {
-        console.log(error);
+        console.error(error);
         if (error instanceof ApiError) {
             const statusCode = error.statusCode || 500;
             return res.status(statusCode).json({
@@ -28,8 +30,8 @@ function createExpressApplication(): Express {
         }
 
         res.status(500).json({
-            sucess: false,
-            message: "internal server error",
+            success: false,
+            message: "Internal server error",
             data: null
         })
     })

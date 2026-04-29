@@ -1,8 +1,9 @@
-import type { Request, Response } from "express";
-import { signinPayloadModel, signupPayloadModel, type signinDto, type signupDto } from "./auth.model.js";
 import ApiError from "../../common/api-error.js";
 import AuthenticationService from "./auth.services.js";
 import ApiResponse from "../../common/api-response.js";
+import { signinPayloadModel, signupPayloadModel} from "./auth.model.js";
+import type { signinDto, signupDto } from "./auth.model.js";
+import type { Request, Response } from "express";
 
 class AuthenticationController {
     private authService = new AuthenticationService();
@@ -28,7 +29,13 @@ class AuthenticationController {
 
         const result = await this.authService.signin(data);
 
-        return ApiResponse.ok(res, "Signin sucsessfull", result);
+        return ApiResponse.ok(res, "Signin successfully", result);
+    }
+
+    public async handleGetMe(req: Request, res: Response) {
+        const result = await this.authService.getMe(req.user.id);
+
+        return ApiResponse.ok(res, "User fetched successfully", result);
     }
 }
 
