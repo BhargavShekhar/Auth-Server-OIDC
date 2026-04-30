@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { createPublicKey, randomBytes } from "node:crypto";
 import AuthenticationService from "../auth/auth.services.js";
 import { redis } from "../../redis/index.js";
 import { db } from "../../db/index.js";
@@ -6,7 +6,8 @@ import { oidcClientsTable } from "../../db/schema.js";
 import { eq } from "drizzle-orm";
 import ApiError from "../../common/api-error.js";
 import { createUserToken } from "../auth/utils/token.js";
-import type { clientRegistrationDto } from "./oidc.model.js";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 class OidcService {
     private authService = new AuthenticationService();
@@ -74,13 +75,21 @@ class OidcService {
             expires_in: 900
         }
     }
+    
+    getJwks() {
+        const publicKey = readFileSync(join(process.cwd(), "keys", "public.key"), "utf-8");
 
-    async registerClient({ name, redirectUris }: clientRegistrationDto) {
-        // await db.insert(oidcClientsTable).values({
-        //     name,
-        //     redirectUris,
+        const keyObj = createPublicKey(publicKey);
+        const jwk = keyObj.export({ format: "jwk" });
 
-        // })
+        return {
+            keys: [{
+                ...jwk,
+                use: "sig", // this key is for signature verification
+                alg: "RS256",
+                kid: "auth-server-key-1" // key ID — useful when rotating keys
+            }]
+        }
     }
 }
 

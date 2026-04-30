@@ -23,6 +23,6 @@ router.post("/authorize", oidcController.handleAuthorizationSubmit.bind(oidcCont
 
 router.post("/token", oidcController.handleToken.bind(oidcController));
 
-// router.post("/clients/register")
+router.get("/.well-known/jwks.json", oidcController.handleJwks.bind(oidcController));
 
 export default router;

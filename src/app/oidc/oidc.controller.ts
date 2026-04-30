@@ -1,9 +1,7 @@
 import ApiError from "../../common/api-error.js";
 import ApiResponse from "../../common/api-response.js";
-import { oidcClientPayloadModel } from "./oidc.model.js";
 import OidcService from "./oidc.services.js";
 import type { Request, Response } from "express";
-import type { clientRegistrationDto } from "./oidc.model.js";
 
 class OidcController {
     private oidcService = new OidcService();
@@ -60,14 +58,9 @@ class OidcController {
         return ApiResponse.ok(res, "tokens generated sucessfully", { tokens });
     }
 
-    public async handleRegisterClient(req: Request, res: Response) {
-        const validateResult = oidcClientPayloadModel.safeParse(req.body);
-
-        if (!validateResult.success) throw ApiError.badRequest("validation failed");
-
-        const data: clientRegistrationDto = validateResult.data;
-
-        
+    public async handleJwks(req: Request, res: Response) {
+        const jwks = this.oidcService.getJwks();
+        return res.json(jwks);
     }
 }
 
