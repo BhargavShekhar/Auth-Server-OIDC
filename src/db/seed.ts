@@ -31,4 +31,7 @@ seedDatabase()
         console.error(error);
         process.exit(1);
     })
-    .finally(() => process.exit(1));
+    .finally(() => {
+        console.log("Data seeded succesfully!!!");
+        process.exit(0)
+    });

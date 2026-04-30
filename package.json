@@ -11,7 +11,9 @@
     "dev:watch": "tsc-watch --onSuccess \"node dist/index\"",
     "studio": "drizzle-kit studio",
     "db:generate": "npx drizzle-kit generate",
-    "db:migrate": "npx drizzle-kit migrate"
+    "db:migrate": "npx drizzle-kit migrate",
+    "db:seed": "node dist/db/seed.js",
+    "generate:keys": "node scripts/generate-keys.js"
   },
   "keywords": [],
   "author": "",

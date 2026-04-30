@@ -23,4 +23,6 @@ router.post("/authorize", oidcController.handleAuthorizationSubmit.bind(oidcCont
 
 router.post("/token", oidcController.handleToken.bind(oidcController));
 
+// router.post("/clients/register")
+
 export default router;

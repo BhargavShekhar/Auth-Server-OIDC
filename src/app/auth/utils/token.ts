@@ -1,19 +1,33 @@
 import jwt from "jsonwebtoken";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 export interface UserTokenPayload {
-    id: string
+    id: string,
+    email?: string,
+    firstName?: string
 }
+
+const publicKey = readFileSync(join(process.cwd(), "keys", "private.key"), "utf-8");
+const privateKey = readFileSync(join(process.cwd(), "keys", "private.key"), "utf-8");
 
 export function createUserToken(payload: UserTokenPayload) {
     const token = jwt.sign(
         payload,
-        process.env.JWT_SECRET!,
-        { expiresIn: '15m' }
+        privateKey,
+        {
+            algorithm: "RS256",
+            expiresIn: '15m'
+        }
     );
     return token;
 }
 
 export function verifyUserToken(token: string) {
-    const payload = jwt.verify(token, process.env.JWT_SECRET!) as UserTokenPayload;
+    const payload = jwt.verify(
+        token,
+        publicKey,
+        { algorithms: ["RS256"] }
+    ) as UserTokenPayload;
     return payload;
 }

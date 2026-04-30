@@ -1,6 +1,9 @@
 import ApiError from "../../common/api-error.js";
+import ApiResponse from "../../common/api-response.js";
+import { oidcClientPayloadModel } from "./oidc.model.js";
 import OidcService from "./oidc.services.js";
 import type { Request, Response } from "express";
+import type { clientRegistrationDto } from "./oidc.model.js";
 
 class OidcController {
     private oidcService = new OidcService();
@@ -12,8 +15,7 @@ class OidcController {
 
         if (response_type !== "code") throw ApiError.badRequest("Unsupported response type");
 
-        // TODO should support all client
-        if (client_id !== process.env.CHECKBOXES_CLIENT_SECRET) throw ApiError.unauthorized("Unknown client");
+        await this.oidcService.validateClient(client_id as string, redirect_uri as string); // validate if client is registered
 
         return res.send(`
             <html>
@@ -48,6 +50,22 @@ class OidcController {
         if (grant_type !== "authorization_code") throw ApiError.badRequest("unsupported_grant_type");
 
         if (!code || !client_id || !client_secret) throw ApiError.badRequest("Missing required parameters");
+
+        const tokens = await this.oidcService.exchangeCodeForToken({
+            client_id,
+            client_secret,
+            code
+        });
+
+        return ApiResponse.ok(res, "tokens generated sucessfully", { tokens });
+    }
+
+    public async handleRegisterClient(req: Request, res: Response) {
+        const validateResult = oidcClientPayloadModel.safeParse(req.body);
+
+        if (!validateResult.success) throw ApiError.badRequest("validation failed");
+
+        const data: clientRegistrationDto = validateResult.data;
 
         
     }
