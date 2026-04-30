@@ -15,3 +15,16 @@ export const usersTable = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").$default(() => new Date())
 });
+
+export const oidcClientsTable = pgTable("oidc_clients", {
+  id: uuid("id").primaryKey().defaultRandom(),
+
+  clientId: varchar("client_id", { length: 100 }).notNull().unique(),
+  clientSecret: varchar("client_secret", { length: 256 }).notNull(),
+
+  name: varchar("name", { length: 100 }).notNull(),
+  redirectUris: text("redirect_uris").array().notNull(),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").$default(() => new Date())
+})

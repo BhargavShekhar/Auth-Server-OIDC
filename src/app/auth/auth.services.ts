@@ -12,6 +12,18 @@ class AuthenticationService {
         return createHmac("sha256", salt).update(password).digest("hex");
     }
 
+    async validateCredentials({ email, password }: signinDto) {
+        const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email));
+
+        if (!user) throw ApiError.notfound("Invalid Credentials");
+
+        const hash = this.hashPassword(password, user.salt!);
+
+        if (user.password !== hash) throw ApiError.forbidden("Invalid Credentials");
+
+        return user.id;
+    }
+
     async signup({ firstName, lastName, email, password }: signupDto) {
         const [existingUser] = await db.select().from(usersTable).where(eq(usersTable.email, email));
 
@@ -36,15 +48,9 @@ class AuthenticationService {
     }
 
     async signin({ email, password }: signinDto) {
-        const [user] = await db.select().from(usersTable).where(eq(usersTable.email, email));
+        const userId = await this.validateCredentials({ email, password });
 
-        if (!user) throw ApiError.notfound("Invalid Credentials");
-
-        const hash = this.hashPassword(password, user.salt!);
-
-        if (user.password !== hash) throw ApiError.forbidden("Invalid Credentials");
-
-        const token = createUserToken({ id: user.id });
+        const token = createUserToken({ id: userId });
 
         return { token };
     }

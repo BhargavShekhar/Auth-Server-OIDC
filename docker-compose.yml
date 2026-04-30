@@ -6,4 +6,9 @@ services:
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=postgres
+      - POSTGRES_DB=postgre
+  auth-server-oidc-valkey:
+    image: valkey/valkey
+    container_name: auth-server-oidc-valkey
+    ports:
+      - '6379:6379'

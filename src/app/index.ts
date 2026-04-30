@@ -1,13 +1,18 @@
 import express from "express";
 import ApiError from "../common/api-error.js";
 import authRouter from "./auth/auth.routes.js";
-import type { Express, Request, Response, NextFunction } from "express";
 import { authenticationMiddleware } from "./middleware/auth-middleware.js";
+import oidcRouter from "./oidc/oidc.routes.js";
+import type { Express, Request, Response, NextFunction } from "express";
 
 function createExpressApplication(): Express {
     const app = express();
 
     app.use(express.json());
+    app.use(express.urlencoded({ extended: true }));
+
+    app.use("/", oidcRouter);
+    
     app.use(authenticationMiddleware());
 
     app.get("/health", (req, res) => res.json({ healthy: true }));
