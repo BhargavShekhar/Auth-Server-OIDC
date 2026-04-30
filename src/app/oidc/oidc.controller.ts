@@ -37,7 +37,7 @@ class OidcController {
 
         if (!client_id || !redirect_uri || !state || !email || !password) throw ApiError.badRequest("Missing required parameters");
 
-        const code = await this.oidcService.generateAuthCode({ email, password });
+        const code = await this.oidcService.validateAndGenerateAuthCode({ email, password }); // also validates the user
 
         return res.redirect(`${redirect_uri}?code=${code}&state=${state}`);
     }

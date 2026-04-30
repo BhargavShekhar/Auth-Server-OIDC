@@ -12,7 +12,7 @@ import { join } from "node:path";
 class OidcService {
     private authService = new AuthenticationService();
 
-    async generateAuthCode({ email, password }: {
+    async validateAndGenerateAuthCode({ email, password }: {
         email: string,
         password: string,
     }) {
@@ -60,16 +60,16 @@ class OidcService {
 
         const user = await this.authService.getMe(userId);
 
-        const id_token = createUserToken({
+        const id_token = createUserToken({  // contains the identity of user, app reads it once, extracts user info, creates a session, then discards it.
             id: userId,
             email: user.email!,
             firstName: user.firstName!
         });
 
-        const access_token = createUserToken({ id: userId });
+        const access_token = createUserToken({ id: userId }); // contains what the scope/resource the user can assess we only have id for now so user has infinite scope
 
         return {
-            access_token,
+            access_token, 
             id_token,
             token_type: "Bearer",
             expires_in: 900
