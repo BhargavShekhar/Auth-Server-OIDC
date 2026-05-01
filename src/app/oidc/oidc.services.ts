@@ -1,4 +1,4 @@
-import { createPublicKey, randomBytes } from "node:crypto";
+import { createHash, createPublicKey, randomBytes } from "node:crypto";
 import AuthenticationService from "../auth/auth.services.js";
 import { redis } from "../../redis/index.js";
 import { db } from "../../db/index.js";
@@ -12,15 +12,19 @@ import { join } from "node:path";
 class OidcService {
     private authService = new AuthenticationService();
 
-    async validateAndGenerateAuthCode({ email, password }: {
+    async validateAndGenerateAuthCode({ email, password, code_challenge }: {
         email: string,
         password: string,
+        code_challenge: string
     }) {
         const userId = await this.authService.validateCredentials({ email, password });
 
         const code = randomBytes(32).toString("hex");
 
-        await redis.set(`code:${code}`, userId, "EX", 60);
+        await redis.set(`code:${code}`,JSON.stringify({
+            userId,
+            code_challenge
+        }), "EX", 60);
 
         return code;
     }
@@ -45,18 +49,26 @@ class OidcService {
         return;
     }
 
-    async exchangeCodeForToken({ code, client_id, client_secret }: {
+    async exchangeCodeForToken({ code, code_verifier, client_id, client_secret }: {
         code: string,
+        code_verifier: string,
         client_id: string,
-        client_secret: string
+        client_secret: string,
     }) {
         await this.validateClientWithSecret(client_id, client_secret);
 
-        const userId = await redis.get(`code:${code}`);
+        const stored = await redis.get(`code:${code}`);
 
-        if (!userId) throw ApiError.badRequest("Invalid or expired code");
+        if (!stored) throw ApiError.badRequest("Invalid or expired code");
+
+        const { userId, code_challenge } = JSON.parse(stored);
 
         await redis.del(`code:${code}`);
+
+        // PKCE verification
+        const expectedChallenge = createHash("sha256").update(code_verifier).digest("base64url");
+
+        if (expectedChallenge !== code_challenge) throw ApiError.unauthorized("PKCE validation failed");
 
         const user = await this.authService.getMe(userId);
 
