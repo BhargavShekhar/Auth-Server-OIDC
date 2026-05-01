@@ -1,15 +1,20 @@
-import { randomBytes, createHmac } from "crypto";
+import { randomBytes, createHmac, createHash } from "crypto";
 
 import { eq } from "drizzle-orm";
 import { db } from "../../db/index.js";
 import { usersTable } from "../../db/schema.js";
 import ApiError from "../../common/api-error.js";
+import { createRefreshToken, createUserToken } from "./utils/token.js";
 import type { signinDto, signupDto } from "./auth.model.js";
-import { createUserToken } from "./utils/token.js";
+import { redis } from "../../redis/index.js";
 
 class AuthenticationService {
     hashPassword(password: string, salt: string) {
         return createHmac("sha256", salt).update(password).digest("hex");
+    }
+
+    hashToken(token: string) {
+        return createHash("sha256").update(token).digest("hex");
     }
 
     async validateCredentials({ email, password }: signinDto) {
@@ -50,9 +55,46 @@ class AuthenticationService {
     async signin({ email, password }: signinDto) {
         const userId = await this.validateCredentials({ email, password });
 
-        const token = createUserToken({ id: userId });
+        const userToken = createUserToken({ id: userId });
+        const refreshToken = createRefreshToken();
 
-        return { token };
+        const hashedRefreshToken = this.hashToken(refreshToken);
+
+        await redis.set(
+            `refresh:${hashedRefreshToken}`,
+            userId,
+            "EX",
+            60 * 60 * 24 * 7
+        );
+
+        return {
+            token: { userToken, refreshToken }
+        };
+    }
+
+    async refresh(refreshToken: string) {
+        const hashRefreshToken = this.hashToken(refreshToken);
+
+        const userId = await redis.get(`refresh:${hashRefreshToken}`);
+
+        if (!userId) throw ApiError.unauthorized("Invalid refresh token");
+
+        const userToken = createUserToken({ id: userId });
+
+        const newRefreshToken = createRefreshToken();
+        const hashedNewToken = this.hashToken(newRefreshToken);
+
+        await redis.del(`refresh:${hashedNewToken}`);
+        await redis.set(
+            `refresh:${newRefreshToken}`,
+            userId,
+            "EX",
+            60 * 60 * 24 * 7
+        );
+
+        return {
+            token: { userToken, refreshToken: newRefreshToken }
+        }
     }
 
     async getMe(id: string) {

@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -8,7 +9,7 @@ export interface UserTokenPayload {
     firstName?: string
 }
 
-const publicKey = readFileSync(join(process.cwd(), "keys", "private.key"), "utf-8");
+const publicKey = readFileSync(join(process.cwd(), "keys", "public.key"), "utf-8");
 const privateKey = readFileSync(join(process.cwd(), "keys", "private.key"), "utf-8");
 
 export function createUserToken(payload: UserTokenPayload) {
@@ -30,4 +31,9 @@ export function verifyUserToken(token: string) {
         { algorithms: ["RS256"] }
     ) as UserTokenPayload;
     return payload;
+}
+
+export function createRefreshToken() {
+    const refreshToken = crypto.randomBytes(32).toString("hex");
+    return refreshToken;
 }

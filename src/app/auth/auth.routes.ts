@@ -9,6 +9,8 @@ const router: Router = Router();
 router.post("/signup", authenticationContoller.handleSignup.bind(authenticationContoller));
 router.post("/signin", authenticationContoller.handleSignin.bind(authenticationContoller));
 
+router.post("/refresh", authenticationContoller.handleRefresh.bind(authenticationContoller));
+
 router.get("/me", restrictToAuthenticatedUser(), authenticationContoller.handleGetMe.bind(authenticationContoller));
 
 export default router;
