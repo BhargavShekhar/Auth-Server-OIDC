@@ -1,20 +1,17 @@
-import { randomBytes, createHmac, createHash } from "crypto";
+import { randomBytes, createHmac } from "crypto";
 
 import { eq } from "drizzle-orm";
 import { db } from "../../db/index.js";
 import { usersTable } from "../../db/schema.js";
 import ApiError from "../../common/api-error.js";
-import { createRefreshToken, createUserToken } from "./utils/token.js";
-import type { signinDto, signupDto } from "./auth.model.js";
+import { createRefreshToken, createUserToken, hashToken } from "./utils/token.js";
 import { redis } from "../../redis/index.js";
+import { refreshTokenExpireTime } from "../../common/constants.js";
+import type { signinDto, signupDto } from "./auth.model.js";
 
 class AuthenticationService {
     hashPassword(password: string, salt: string) {
         return createHmac("sha256", salt).update(password).digest("hex");
-    }
-
-    hashToken(token: string) {
-        return createHash("sha256").update(token).digest("hex");
     }
 
     async validateCredentials({ email, password }: signinDto) {
@@ -58,13 +55,13 @@ class AuthenticationService {
         const userToken = createUserToken({ id: userId });
         const refreshToken = createRefreshToken();
 
-        const hashedRefreshToken = this.hashToken(refreshToken);
+        const hashedRefreshToken = hashToken(refreshToken);
 
         await redis.set(
             `refresh:${hashedRefreshToken}`,
             userId,
             "EX",
-            60 * 60 * 24 * 7
+            refreshTokenExpireTime
         );
 
         return {
@@ -73,7 +70,7 @@ class AuthenticationService {
     }
 
     async refresh(refreshToken: string) {
-        const hashRefreshToken = this.hashToken(refreshToken);
+        const hashRefreshToken = hashToken(refreshToken);
 
         const userId = await redis.get(`refresh:${hashRefreshToken}`);
 
@@ -82,14 +79,14 @@ class AuthenticationService {
         const userToken = createUserToken({ id: userId });
 
         const newRefreshToken = createRefreshToken();
-        const hashedNewToken = this.hashToken(newRefreshToken);
+        const hashedNewToken = hashToken(newRefreshToken);
 
         await redis.del(`refresh:${hashedNewToken}`);
         await redis.set(
             `refresh:${newRefreshToken}`,
             userId,
             "EX",
-            60 * 60 * 24 * 7
+            refreshTokenExpireTime
         );
 
         return {
@@ -100,11 +97,9 @@ class AuthenticationService {
     async getMe(id: string) {
         const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id));
 
-        return {
-            firstName: user?.firstName,
-            lastName: user?.lastName,
-            email: user?.email
-        };
+        if (!user) throw ApiError.badRequest("No user with this id exists");
+
+        return user;
     }
 }
 

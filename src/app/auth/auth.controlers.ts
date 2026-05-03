@@ -45,7 +45,11 @@ class AuthenticationController {
     public async handleGetMe(req: Request, res: Response) {
         const result = await this.authService.getMe(req.user!.id);
 
-        return ApiResponse.ok(res, "User fetched successfully", result);
+        return ApiResponse.ok(res, "User fetched successfully", {
+            firstName: result?.firstName,
+            lastName: result?.lastName,
+            email: result?.email
+        });
     }
 }
 

@@ -1,7 +1,8 @@
 import crypto from "crypto";
-import jwt from "jsonwebtoken";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import jwt from "jsonwebtoken";
 
 export interface UserTokenPayload {
     id: string,
@@ -36,4 +37,9 @@ export function verifyUserToken(token: string) {
 export function createRefreshToken() {
     const refreshToken = crypto.randomBytes(32).toString("hex");
     return refreshToken;
+}
+
+export function hashToken(token: string) {
+    const hash = createHash("sha256").update(token).digest("hex");
+    return hash;
 }

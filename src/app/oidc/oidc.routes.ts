@@ -13,8 +13,9 @@ router.get("/.well-known/openid-configuration", (req, res) => {
         authorization_endpoint: `${issuer}/authorize`, // where the browser will get redirected for login
         token_endpoint: `${issuer}/token`, // differnent server will call to exchange the auth code for tokens
         jwks_uri: `${issuer}/.well-known/jwks.json`, // where the public keys live so other servers can verify JWTs
+        userinfo_endpoint: `${issuer}/userinfo`,
         subject_types_supported: ["public"],
-        id_token_signing_alg_values_supported: ["HS256"]
+        id_token_signing_alg_values_supported: ["RS256"]
     })
 })
 
@@ -24,5 +25,7 @@ router.post("/authorize", oidcController.handleAuthorizationSubmit.bind(oidcCont
 router.post("/token", oidcController.handleToken.bind(oidcController));
 
 router.get("/.well-known/jwks.json", oidcController.handleJwks.bind(oidcController));
+
+router.get("/userinfo", oidcController.handleUserInfo.bind(oidcController));
 
 export default router;

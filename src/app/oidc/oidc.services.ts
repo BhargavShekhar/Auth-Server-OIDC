@@ -5,9 +5,10 @@ import { db } from "../../db/index.js";
 import { oidcClientsTable } from "../../db/schema.js";
 import { eq } from "drizzle-orm";
 import ApiError from "../../common/api-error.js";
-import { createUserToken } from "../auth/utils/token.js";
+import { createRefreshToken, createUserToken, hashToken, verifyUserToken } from "../auth/utils/token.js";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { accessTokenExpireTime, refreshTokenExpireTime } from "../../common/constants.js";
 
 class OidcService {
     private authService = new AuthenticationService();
@@ -21,7 +22,7 @@ class OidcService {
 
         const code = randomBytes(32).toString("hex");
 
-        await redis.set(`code:${code}`,JSON.stringify({
+        await redis.set(`code:${code}`, JSON.stringify({
             userId,
             code_challenge
         }), "EX", 60);
@@ -72,6 +73,8 @@ class OidcService {
 
         const user = await this.authService.getMe(userId);
 
+        if (!user) throw ApiError.badRequest("Could not find user with the userId");
+
         const id_token = createUserToken({  // contains the identity of user, app reads it once, extracts user info, creates a session, then discards it.
             id: userId,
             email: user.email!,
@@ -80,14 +83,25 @@ class OidcService {
 
         const access_token = createUserToken({ id: userId }); // contains what the scope/resource the user can assess we only have id for now so user has infinite scope
 
+        const refreshToken = createRefreshToken();
+        const hashRefreshToken = hashToken(refreshToken);
+
+        await redis.set(
+            `refresh:${hashRefreshToken}`,
+            userId,
+            "EX",
+            refreshTokenExpireTime
+        );
+
         return {
-            access_token, 
+            access_token,
             id_token,
+            refresh_token: refreshToken,
             token_type: "Bearer",
-            expires_in: 900
+            expires_in: accessTokenExpireTime
         }
     }
-    
+
     getJwks() {
         const publicKey = readFileSync(join(process.cwd(), "keys", "public.key"), "utf-8");
 
@@ -102,6 +116,61 @@ class OidcService {
                 kid: "auth-server-key-1" // key ID — useful when rotating keys
             }]
         }
+    }
+
+    async refreshTokens({ refreshToken, client_id, client_secret }: {
+        refreshToken: string,
+        client_id: string,
+        client_secret: string
+    }) {
+        await this.validateClientWithSecret(client_id, client_secret);
+
+        const hashRefreshToken = hashToken(refreshToken);
+
+        const userId = await redis.get(`refresh:${hashRefreshToken}`);
+
+        if (!userId) throw ApiError.unauthorized("Invalid or expired refresh token");
+
+        await redis.del(`refresh:${hashRefreshToken}`);
+
+        const user = await this.authService.getMe(userId);
+
+        
+        const newRefreshToken = createRefreshToken();
+        const newHashRefreshToken = hashToken(newRefreshToken);
+        
+        await redis.set(
+            `refresh:${newHashRefreshToken}`,
+            userId,
+            "EX",
+            refreshTokenExpireTime
+        );
+        
+        const access_token = createUserToken({ id: userId });
+        const id_token = createUserToken({
+            id: userId,
+            firstName: user.firstName,
+            email: user.email || ""
+        });
+
+        return {
+            access_token,
+            id_token,
+            refresh_token: newRefreshToken,
+            token_type: "Bearer",
+            expires_in: accessTokenExpireTime
+        }
+    }
+
+    async userInfo(token: string) {
+        const payload = verifyUserToken(token);
+        const user = await this.authService.getMe(payload.id);
+        return {
+            sub: user.id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+        };
     }
 }
 

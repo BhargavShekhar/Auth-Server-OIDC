@@ -50,25 +50,57 @@ class OidcController {
     }
 
     public async handleToken(req: Request, res: Response) {
-        const { grant_type, code, client_id, client_secret, code_verifier } = req.body;
+        const { grant_type, code, client_id, client_secret, code_verifier, refresh_token } = req.body;
 
-        if (grant_type !== "authorization_code") throw ApiError.badRequest("unsupported_grant_type");
+        if (grant_type === "authorization_code") {
+            if (!code || !code_verifier) {
+                throw ApiError.badRequest("Missing code or code_verifier");
+            }
 
-        if (!code || !client_id || !client_secret) throw ApiError.badRequest("Missing required parameters");
+            const tokens = await this.oidcService.exchangeCodeForToken({
+                client_id,
+                client_secret,
+                code,
+                code_verifier
+            });
 
-        const tokens = await this.oidcService.exchangeCodeForToken({
-            client_id,
-            client_secret,  
-            code,
-            code_verifier
-        });
+            return res.json(tokens);
+        }
 
-        return ApiResponse.ok(res, "tokens generated sucessfully", { tokens });
+        if (grant_type === "refresh_token") {
+            if (!refresh_token) {
+                throw ApiError.badRequest("Missing refresh_token");
+            }
+
+            const tokens = await this.oidcService.refreshTokens({
+                refreshToken: refresh_token,
+                client_id,
+                client_secret
+            });
+
+            return res.json(tokens);
+        }
+
+
     }
 
     public async handleJwks(req: Request, res: Response) {
         const jwks = this.oidcService.getJwks();
-        return res.json(jwks);
+        return ApiResponse.ok(res, "Fetch successfull", jwks);
+    }
+
+    public async handleUserInfo(req: Request, res: Response) {
+        const authHeader = req.headers["authorization"];
+
+        if (!authHeader || !authHeader.startsWith("Bearer")) throw ApiError.badRequest("Bearer token required");
+
+        const token = authHeader.split(" ")[1];
+
+        if (!token) throw ApiError.badRequest("Invalid token required");
+
+        const result = await this.oidcService.userInfo(token);
+
+        return res.status(200).json(result);
     }
 }
 
