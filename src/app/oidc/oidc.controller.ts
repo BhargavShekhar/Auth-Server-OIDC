@@ -81,12 +81,12 @@ class OidcController {
             return res.json(tokens);
         }
 
-
+        throw ApiError.badRequest("Unsupported grant_type");
     }
 
     public async handleJwks(req: Request, res: Response) {
         const jwks = this.oidcService.getJwks();
-        return ApiResponse.ok(res, "Fetch successfull", jwks);
+        return res.json(jwks);
     }
 
     public async handleUserInfo(req: Request, res: Response) {
